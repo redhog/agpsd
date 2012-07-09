@@ -1,0 +1,19 @@
+{
+  "name"           : "agpsd",
+  "description"    : "A gpsd replication and logging daemon",
+  "homepage"       : "https://github.com/redhog/agpsd",
+  "keywords"       : ["agpsd", "gpsd", "replication"],
+  "author"         : "RedHog (Egil Möller) <redhog@redhog.org>",
+  "contributors"   : [],
+  "dependencies"   : {
+                      "sqlite3"             : "2.1.1"
+                     },
+  "bin":             { "agpsd": "./server.js" },
+  "devDependencies": {
+                      "jshint"  : "*"
+                     },
+  "engines"        : { "node" : ">=0.6.0",
+                       "npm"  : ">=1.0"
+                     }, 
+  "version"        : "1.0.0"
+}
