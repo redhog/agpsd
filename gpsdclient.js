@@ -31,10 +31,13 @@ exports.Client = function(stream) {
 
   self.on('receive_VERSION', function (data) {
     if (data.capabilities && underscore.include(data.capabilities, 'replay')) {
-      self.send("REPLAY", {from:"2012-07-09T09:15:31.000Z"});
+      self.emit('receive_VERSION_REPLAY', data);
     } else {
-      self.send("WATCH", {"enable":true,"json":true});
+      self.emit('receive_VERSION_WATCH', data);
     }
+  });
+  self.on('receive_VERSION_WATCH', function (data) {
+    self.send("WATCH", {"enable":true,"json":true});
   });
 
 }
