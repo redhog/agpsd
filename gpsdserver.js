@@ -1,6 +1,7 @@
 var events = require('events');
 var util = require('util');
 var underscore = require('underscore');
+var dateformat = require("dateformat");
 
 exports.Server = function(stream) {
   var self = this;
@@ -54,7 +55,7 @@ exports.Server = function(stream) {
              devices: 
              [{class: 'DEVICE',
                path: '/agpsd',
-               activated: '2012-07-09T09:15:28.826Z',
+               activated: dateformat((new Date()), "isoDateTime"),
                driver: 'AGPSD',
                cycle: 1 }]});
 }

@@ -40,7 +40,7 @@ db.run(
           });
         } else {
           db.each(
-            "select data from events order by timestamp asc",
+            "select data from events where class not in ('VERSION', 'DEVICES', 'WATCH') order by timestamp asc",
             function(err, row) {
               serverSocket.send(JSON.parse(row.data));
           });
