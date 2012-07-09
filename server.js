@@ -13,13 +13,24 @@ db.run("create table events (timestamp timestamp, data text)", function (err) {}
 var serverSockets = {};
 var server = net.createServer(function (socket) {
   socket.name = socket.remoteAddress + ":" + socket.remotePort
-  serverSockets[socket.name] = new gpsdserver.Server(socket);
+  var serverSocket = serverSockets[socket.name] = new gpsdserver.Server(socket);
 
-  serverSockets[socket.name].on('receive_WATCH', function (params) {
+  serverSocket.on('receive_WATCH', function (params) {
+    serverSocket.watch = params.enable;
     db.get(
      "select data from events where timestamp is not null order by timestamp desc limit 1",
      function(err, row) {
-       serverSockets[socket.name].send(JSON.parse(row.data));
+       serverSocket.send(JSON.parse(row.data));
+    });
+  });
+
+  serverSocket.on('receive_REPLAY', function (params) {
+    serverSocket.watch = true;
+    db.each(
+      "select data from events where timestamp >= ? order by timestamp asc",
+      params.from,
+      function(err, row) {
+        serverSocket.send(JSON.parse(row.data));
     });
   });
 
@@ -43,7 +54,9 @@ if (argv.options.upstream) {
       db.run("insert into events (timestamp, data) values ($timestamp, $data)", {$timestamp:response.time, $data:JSON.stringify(response)});
       for (var name in serverSockets) {
         var serverSocket = serverSockets[name];
-        serverSocket.send(response);
+        if (serverSocket.watch) {
+          serverSocket.send(response);
+        }
       }
       console.log(".");
     });  
