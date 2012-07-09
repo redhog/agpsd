@@ -11,7 +11,12 @@ exports.Server = function(stream) {
   self.stream = stream;
 
   self.send = function (data) {
-    self.stream.write(JSON.stringify(data) + "\n");
+    self.stream.write(JSON.stringify(data) + "\n", function (err) {
+      if (err) {
+        console.error(err);
+        self.stream.emit("end");
+      }
+    });
   };
 
   self.stream.on('data', function(data) {
@@ -20,7 +25,7 @@ exports.Server = function(stream) {
     while (results = _terminator.exec(self.data)) {
       var line = results[1];
       self.data = self.data.slice(line.length);
-      line = line.match(/\?([^=]*)\=(.*)/);
+      line = line.match(/\?([^=]*)\=(.*[^;\r\n])/);
       self.emit('receive', line[1], JSON.parse(line[2]));
     };
   });
