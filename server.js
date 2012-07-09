@@ -23,7 +23,7 @@ db.run(
       serverSocket.on('receive_WATCH', function (params) {
         serverSocket.watch = params.enable;
         db.get(
-          "select data from events where class not in ('VERSION', 'DEVICES', 'WATCH') order by timestamp desc limit 1",
+          "select data from events where class not in ('VERSION', 'DEVICES', 'WATCH', 'REPLAY') order by timestamp desc limit 1",
           function(err, row) {
             serverSocket.send(JSON.parse(row.data));
         });
@@ -33,14 +33,14 @@ db.run(
         serverSocket.watch = true;
         if (params.from) {
           db.each(
-            "select data from events where class not in ('VERSION', 'DEVICES', 'WATCH') and timestamp > ? order by timestamp asc",
+            "select data from events where class not in ('VERSION', 'DEVICES', 'WATCH', 'REPLAY') and timestamp > ? order by timestamp asc",
             params.from,
             function(err, row) {
               serverSocket.send(JSON.parse(row.data));
           });
         } else {
           db.each(
-            "select data from events where class not in ('VERSION', 'DEVICES', 'WATCH') order by timestamp asc",
+            "select data from events where class not in ('VERSION', 'DEVICES', 'WATCH', 'REPLAY') order by timestamp asc",
             function(err, row) {
               serverSocket.send(JSON.parse(row.data));
           });
@@ -65,7 +65,7 @@ db.run(
         var client = new gpsdclient.Client(net.createConnection(val[1], val[0]));
         client.on('receive_VERSION_REPLAY', function (data) {
           db.get(
-            "select timestamp from events where class not in ('VERSION', 'DEVICES', 'WATCH') order by timestamp desc limit 1",
+            "select timestamp from events where class not in ('VERSION', 'DEVICES', 'WATCH', 'REPLAY') order by timestamp desc limit 1",
             function(err, row) {
               if (err || !row) {
                 client.send("REPLAY", {});
