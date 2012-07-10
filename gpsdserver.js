@@ -10,8 +10,18 @@ exports.Server = function(stream) {
   self.data = "";
   self.stream = stream;
 
+  self.closed = false;
+
+  self.stream.on('close', function (cmd, params) {
+    self.closed = true;
+  });
+
   self.send = function (data) {
-    self.stream.write(JSON.stringify(data) + ";\n", function (err) {
+    if (self.closed) return;
+    //if (data.device) data.device = "/agpsd";
+    data = JSON.stringify(data) + ";\r\n";
+    console.log("S>" + data + "<");
+    self.stream.write(data, function (err) {
       if (err) {
         console.error(err);
         self.stream.emit("end");
@@ -25,6 +35,7 @@ exports.Server = function(stream) {
     while (results = _terminator.exec(self.data)) {
       var line = results[1];
       self.data = self.data.slice(line.length);
+      console.log("R>" + line + "<");
       line = line.match(/\?([^=]*)\=(.*[^;\r\n])/);
       self.emit('receive', line[1], JSON.parse(line[2]));
     };
@@ -43,6 +54,8 @@ exports.Server = function(stream) {
                raw: 0,
                scaled: false,
                timing: false });
+      self.send({"class":"DEVICE","path":"/agpsd","activated":dateformat((new Date()), "isoDateTime"),
+                 "driver":"AGPSD","native":1,"cycle":1.00});
   });
   self.on('receive_REPLAY', function (params) {
     self.send({class: 'REPLAY',

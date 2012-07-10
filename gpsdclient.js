@@ -15,10 +15,11 @@ exports.Client = function(stream) {
 
   self.stream.on('data', function(data) {
     self.data += data;
-      var _terminator = /^([^\r\n]*[\r\n][\r\n]?)/;
+    var _terminator = /^([^\r\n]*[\r\n][\r\n]?)/;
     while (results = _terminator.exec(self.data)) {
       var line = results[1];
       self.data = self.data.slice(line.length);
+      line = line.match(/(.*[^;\r\n]);?/)[1];
       self.emit('receive', JSON.parse(line));
     };
   });

@@ -33,7 +33,7 @@ exports.Client = function(host, port, app) {
 
     self.on('receive_VERSION_REPLAY', function (data) {
       app.db.get(
-        "select timestamp from events where class not in ('VERSION', 'DEVICES', 'WATCH', 'REPLAY') order by timestamp desc limit 1",
+        "select timestamp from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') order by timestamp desc limit 1",
         function(err, row) {
           if (err || !row) {
             self.send("REPLAY", {});
@@ -55,7 +55,7 @@ exports.Client = function(host, port, app) {
           serverSocket.send(response);
         }
       }
-      console.log(".");
+      process.stdout.write(".");
     });
   });
 }

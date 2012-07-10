@@ -15,7 +15,7 @@ exports.Server = function(stream, app) {
   self.on('receive_WATCH', function (params) {
     self.watch = params.enable;
     app.db.get(
-      "select data from events where class not in ('VERSION', 'DEVICES', 'WATCH', 'REPLAY') order by timestamp desc limit 1",
+      "select data from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') order by timestamp desc limit 1",
       function(err, row) {
         self.send(JSON.parse(row.data));
     });
@@ -25,14 +25,14 @@ exports.Server = function(stream, app) {
     self.watch = true;
     if (params.from) {
       app.db.each(
-        "select data from events where class not in ('VERSION', 'DEVICES', 'WATCH', 'REPLAY') and timestamp > ? order by timestamp asc",
+        "select data from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') and timestamp > ? order by timestamp asc",
         params.from,
         function(err, row) {
           self.send(JSON.parse(row.data));
       });
     } else {
       app.db.each(
-        "select data from events where class not in ('VERSION', 'DEVICES', 'WATCH', 'REPLAY') order by timestamp asc",
+        "select data from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') order by timestamp asc",
         function(err, row) {
           self.send(JSON.parse(row.data));
       });
@@ -40,7 +40,12 @@ exports.Server = function(stream, app) {
   });
 
   stream.on("end", function () {
-    delete app.selfs[socket.name];
+    delete app.serverSockets[stream.name];
+  });
+
+  stream.on("error", function (err) {
+    console.log([stream.name, err]);
+    delete app.serverSockets[stream.name];
   });
 }
 util.inherits(exports.Server, gpsdserver.Server);
