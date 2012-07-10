@@ -11,7 +11,7 @@ exports.Server = function(stream) {
   self.stream = stream;
 
   self.send = function (data) {
-    self.stream.write(JSON.stringify(data) + "\n", function (err) {
+    self.stream.write(JSON.stringify(data) + ";\n", function (err) {
       if (err) {
         console.error(err);
         self.stream.emit("end");
