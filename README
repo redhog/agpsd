@@ -1,0 +1,18 @@
+A gpsd logging and replication daemon.
+
+Installation:
+
+Install NodeJS and npm. Then run the following inside the agpsd directory:
+
+npm install
+
+
+Usage:
+
+./server.js --listen=4711 --db=agpsd.db --upstream=localhost:2947
+
+Take GPS input from the gpsd och agpsd running at localhost:2947 and
+dump to the (sqlite) database mydb.db. Listen for incoming connections
+(gpsd protocol) on 4712. All arguments except upstream defaults to the
+values shown above. Without upstream, no new data is appended to the
+database.
