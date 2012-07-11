@@ -19,7 +19,7 @@ exports.Server = function(stream) {
   self.send = function (data) {
     if (self.closed) return;
     //if (data.device) data.device = "/agpsd";
-    data = JSON.stringify(data) + ";\r\n";
+    data = JSON.stringify(data) + "\r\n";
     console.log("S>" + data + "<");
     self.stream.write(data, function (err) {
       if (err) {
@@ -47,15 +47,16 @@ exports.Server = function(stream) {
 
   self.on('receive_WATCH', function (params) {
     if (!params.json) console.log("UNSUPPORTED WATCH");
-    self.send({class: 'WATCH',
-               enable: true,
-               json: true,
-               nmea: false,
-               raw: 0,
-               scaled: false,
-               timing: false });
-      self.send({"class":"DEVICE","path":"/agpsd","activated":dateformat((new Date()), "isoDateTime"),
-                 "driver":"AGPSD","native":1,"cycle":1.00});
+    var data = underscore.extend({class: 'WATCH',
+                                   enable: true,
+                                   json: true,
+                                   nmea: false,
+                                   raw: 0,
+                                   scaled: false,
+                                   timing: false }, params);   
+    self.send(data);
+    self.send({"class":"DEVICE","path":"/agpsd","activated":dateformat((new Date()), "isoDateTime"),
+               "driver":"AGPSD","native":1,"cycle":1.00});
   });
   self.on('receive_REPLAY', function (params) {
     self.send({class: 'REPLAY',
