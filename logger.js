@@ -3,8 +3,10 @@ var util = require('util');
 var underscore = require('underscore');
 var dateformat = require("dateformat");
 
-exports.init = function(db) {
+exports.init = function(db, cb) {
   exports.db = db;
+  exports.db.run(
+    "create table events (timestamp timestamp, class varchar(32), data text, lat real, lon real)", cb);
 }
 
 exports.Logger = function() {
@@ -52,6 +54,12 @@ exports.Logger = function() {
     if (!response.time) {
       response.time = dateformat((new Date()), "isoDateTime");
     }
-    exports.db.run("insert into events (timestamp, class, data) values ($timestamp, $class, $data)", {$timestamp:response.time, $class:response.class, $data:JSON.stringify(response)});
+    exports.db.run(
+      "insert into events (timestamp, class, data, lat, lon) values ($timestamp, $class, $data, $lat, $lon)",
+      {$timestamp:response.time,
+       $class:response.class,
+       $data:JSON.stringify(response),
+       $lat:response.lat,
+       $lon:response.lon});
   });
 };

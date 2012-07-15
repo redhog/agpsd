@@ -13,9 +13,8 @@ if (argv.options.db && argv.options.db.length > 0) {
 }
 exports.serverSockets = {};
 exports.db = new sqlite3.Database(dbname);
-logger.init(exports.db);     
-exports.db.run(
-  "create table events (timestamp timestamp, class varchar(32), data text)",
+logger.init(
+  exports.db,
   function (err) {
     var server = net.createServer(function (socket) {
       socket.name = socket.remoteAddress + ":" + socket.remotePort
