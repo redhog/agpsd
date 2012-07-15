@@ -5,8 +5,8 @@ var protocol = require('./protocol');
 var net = require('net');
 var dateformat = require("dateformat");
 
-exports.Server = function(stream) {
+exports.Listener = function(stream) {
   var self = this;
   protocol.Protocol.call(self, stream, false);
 }
-util.inherits(exports.Server, protocol.Protocol);
+util.inherits(exports.Listener, protocol.Protocol);

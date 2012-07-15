@@ -16,6 +16,11 @@ exports.WireProtocol = function(stream, isClient) {
 
   stream.on("error", function (err) {
     console.log([self.name, err]);
+    self.closed = true;
+  });
+
+  stream.on("end", function () {
+    self.closed = true;
   });
 
   self.sendCommand = function (cmd, params) {
