@@ -4,7 +4,7 @@ var underscore = require('underscore');
 var dateformat = require("dateformat");
 var dateformat = require("dateformat");
 
-exports.WireProtocol = function(stream, isClient) {
+exports.WireProtocol = function(stream, isClient, reverseRoles) {
   var self = this;
   events.EventEmitter.call(self);
 
@@ -68,10 +68,20 @@ exports.WireProtocol = function(stream, isClient) {
   });
 
   self.on('receiveResponse_VERSION', function (data) {
-    if (data.capabilities && underscore.include(data.capabilities, 'replay')) {
-      self.emit('receiveResponse_VERSION_REPLAY', data);
+    if (reverseRoles) {
+      if (data.capabilities && underscore.include(data.capabilities, 'reverseroles')) {
+        self.sendCommand("REVERSEROLES", {});
+      } else {
+        console.log("Role reversal not supported for " + self.name);
+        self.closed = true;
+        self.stream.end()
+      }
     } else {
-      self.emit('receiveResponse_VERSION_WATCH', data);
+      if (data.capabilities && underscore.include(data.capabilities, 'replay')) {
+        self.emit('receiveResponse_VERSION_REPLAY', data);
+      } else {
+        self.emit('receiveResponse_VERSION_WATCH', data);
+      }
     }
   });
 
@@ -81,6 +91,16 @@ exports.WireProtocol = function(stream, isClient) {
 
   self.on('receiveCommand', function (cmd, params) {
     self.emit('receiveCommand_' + cmd, params);
+  });
+
+  self.on('receiveCommand_REVERSEROLES', function (params) {
+    self.emit('directionChange', true);
+    self.sendCommand("ROLESREVERSED", {});
+  });
+
+  self.on('receiveCommand_ROLESREVERSED', function (params) {
+    self.emit('directionChange', false);
+    self.emit('serverInitialResponse');
   });
 
   self.on('receiveCommand_WATCH', function (params) {
@@ -102,13 +122,13 @@ exports.WireProtocol = function(stream, isClient) {
                        from: params.from});
   });
 
-  if (!self.isClient) {
+  self.on("serverInitialResponse", function () {
     self.sendResponse({class: 'VERSION',
                        release: '3.4',
                        rev: '3.4',
                        proto_major: 3,
                        proto_minor: 6,
-                       capabilities: ["replay"]});
+                       capabilities: ["replay", "reverseroles"]});
 
     self.sendResponse({class: 'DEVICES',
                        devices: 
@@ -117,6 +137,10 @@ exports.WireProtocol = function(stream, isClient) {
                          activated: dateformat((new Date()), "isoDateTime"),
                          driver: 'AGPSD',
                          cycle: 1 }]});
+  });
+
+  if (!self.isClient) {
+    self.emit("serverInitialResponse");
   }
 }
 util.inherits(exports.WireProtocol, events.EventEmitter);

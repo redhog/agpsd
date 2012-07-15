@@ -6,9 +6,9 @@ var underscore = require('underscore');
 var dateformat = require("dateformat");
 var dateformat = require("dateformat");
 
-exports.Protocol = function(stream, isClient) {
+exports.Protocol = function(stream, isClient, reverseRoles) {
   var self = this;
-  wireprotocol.WireProtocol.call(self, stream, isClient);
+  wireprotocol.WireProtocol.call(self, stream, isClient, reverseRoles);
   router.Router.call(self);
   logger.Logger.call(self);
 

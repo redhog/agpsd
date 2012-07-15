@@ -5,11 +5,11 @@ var protocol = require('./protocol');
 var net = require('net');
 var dateformat = require("dateformat");
 
-exports.Connector = function(host, port) {
+exports.Connector = function(host, port, reverseRoles) {
   var reconnect = function () {
     setTimeout(function () {
       console.log("Reconnect");
-      new exports.Connector(host, port);
+      new exports.Connector(host, port, reverseRoles);
     }, 2000);
   }
   var self = this;
@@ -28,7 +28,7 @@ exports.Connector = function(host, port) {
     reconnect();
   });
   stream.on("connect", function () {
-    protocol.Protocol.call(self, stream, true);
+    protocol.Protocol.call(self, stream, true, reverseRoles);
     self.stream.setTimeout(2000);
   });
 }

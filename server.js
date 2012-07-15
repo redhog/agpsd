@@ -19,7 +19,7 @@ exports.db.run(
   function (err) {
     var server = net.createServer(function (socket) {
       socket.name = socket.remoteAddress + ":" + socket.remotePort
-      new listener.Listener(socket, exports);
+      new listener.Listener(socket);
     })
     var port = 4711;
     if (argv.options.listen && argv.options.listen.length > 0) {
@@ -30,7 +30,14 @@ exports.db.run(
     if (argv.options.upstream) {
       argv.options.upstream.forEach(function (val, index) {
         val = val.split(":");
-        new connector.Connector(val[0], val[1], exports);
+        new connector.Connector(val[0], val[1], false);
+      });
+    }
+
+    if (argv.options.downstream) {
+      argv.options.downstream.forEach(function (val, index) {
+        val = val.split(":");
+        new connector.Connector(val[0], val[1], true);
       });
     }
 

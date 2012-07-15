@@ -9,10 +9,12 @@ npm install
 
 Usage:
 
-./server.js --listen=4711 --db=agpsd.db --upstream=localhost:2947
+./server.js --listen=4711 --db=agpsd.db --upstream=localhost:2947 --downstream=someserver:4712
 
 Take GPS input from the gpsd och agpsd running at localhost:2947 and
 dump to the (sqlite) database mydb.db. Listen for incoming connections
-(gpsd protocol) on 4712. All arguments except upstream defaults to the
-values shown above. Without upstream, no new data is appended to the
-database.
+(gpsd protocol) on 4711. Also try to connect to port 3712 on
+someserver and send data to it using a role-reversed gpsd protocol
+(client pretends to be server, server pretends to be client). All
+arguments except upstream and downstream defaults to the values shown
+above. Without upstream, no new data is appended to the database.
