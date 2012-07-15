@@ -3,6 +3,7 @@
 var net = require('net');
 var sqlite3 = require("sqlite3");
 var argv = require("./argvparser");
+var logger = require("./logger");
 var gpsdclientintegration = require("./gpsdclientintegration");
 var gpsdserverintegration = require("./gpsdserverintegration");
 
@@ -12,6 +13,7 @@ if (argv.options.db && argv.options.db.length > 0) {
 }
 exports.serverSockets = {};
 exports.db = new sqlite3.Database(dbname);
+logger.init(exports.db);     
 exports.db.run(
   "create table events (timestamp timestamp, class varchar(32), data text)",
   function (err) {
