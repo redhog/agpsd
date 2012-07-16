@@ -6,6 +6,8 @@ var argv = require("./argvparser");
 var logger = require("./logger");
 var connector = require("./connector");
 var listener = require("./listener");
+var express = require('express');
+var kml = require('./kml');
 
 var dbname = 'agpsd.db';
 if (argv.options.db && argv.options.db.length > 0) {
@@ -13,6 +15,7 @@ if (argv.options.db && argv.options.db.length > 0) {
 }
 exports.serverSockets = {};
 exports.db = new sqlite3.Database(dbname);
+kml.db = exports.db;
 logger.init(
   exports.db,
   function (err) {
@@ -40,6 +43,23 @@ logger.init(
       });
     }
 
+    webserver = express.createServer();
+    webserver.use(function (req, res, next) {
+      res.header("Server", "AGPSD");
+      next();
+    });
+    webserver.get('/kml', kml.getKml);
+    var httpport = 4812;
+    if (argv.options.httplisten && argv.options.httplisten.length > 0) {
+      httpport = argv.options.httplisten[0];
+    }
+    webserver.listen(httpport);
+
+
+    console.log("Listening for web requests on " + httpport);
     console.log("Listening for connections on " + port);
+
+
+
   }
 );
