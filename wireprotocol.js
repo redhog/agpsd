@@ -51,13 +51,35 @@ exports.WireProtocol = function(stream, isClient, reverseRoles) {
         self.emit('receiveCommand', line[1], JSON.parse(line[2]));
       } else {
         line = line.match(/(.*[^;\r\n]);?/)[1];
-        self.emit('receiveResponse', JSON.parse(line));
+        var response = JSON.parse(line);
+        self.emit('mangleResponse', response);
+        self.emit('receiveResponse', response);
       }
     };
   });
 
   self.on('directionChange', function (isClient) {
     self.isClient = isClient;
+  });
+
+  self.on('mangleResponse', function (response) {
+    if (!response.time) {
+      response.time = dateformat((new Date()), "isoDateTime");
+    }
+    if (response.device && response.device.indexOf("://") == -1) {
+      response.device = "agpsd://" + self.name + response.device;
+    }
+    if (response.path && response.path.indexOf("://") == -1) {
+      response.path = "agpsd://" + self.name + response.path;
+    }
+    if (response.devices) {
+      response.devices.map(function (device) {
+        if (device.path && device.path.indexOf("://") == -1) {
+          device.path = "agpsd://" + self.name + device.path;
+        }
+
+      });
+    }
   });
 
   self.on('receiveResponse', function (data) {

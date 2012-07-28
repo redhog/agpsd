@@ -6,7 +6,12 @@ var dateformat = require("dateformat");
 exports.init = function(db, cb) {
   exports.db = db;
   exports.db.run(
-    "create table events (timestamp timestamp, class varchar(32), data text, lat real, lon real)", cb);
+    "create table events (id integer primary key autoincrement, timestamp timestamp, class varchar(32), data text, lat real, lon real)",
+    function () {
+      exports.db.run(
+        "create table devices (name varchar(256), last_seen integer references events(id))", cb);
+    }
+  );
 }
 
 exports.Logger = function() {
@@ -51,15 +56,56 @@ exports.Logger = function() {
   });
 
   self.on('receiveResponse', function (response) {
-    if (!response.time) {
-      response.time = dateformat((new Date()), "isoDateTime");
-    }
     exports.db.run(
       "insert into events (timestamp, class, data, lat, lon) values ($timestamp, $class, $data, $lat, $lon)",
       {$timestamp:response.time,
        $class:response.class,
        $data:JSON.stringify(response),
        $lat:response.lat,
-       $lon:response.lon});
+       $lon:response.lon},
+      function (err) {
+        if (err) { console.log(err); return; }
+        response.id = this.lastID;
+        self.emit("saveResponse", response);
+      }
+    );
   });
+
+  self.on('saveResponse', function (response) {
+    if (response.class) {
+      self.emit('saveResponse_' + response.class, response);
+    }
+  });
+
+  self.on('saveDevice', function (data) {
+      console.log(["SAVE", data]);
+    exports.db.get(
+      "select count(*) as count from devices where name = $name",
+      {$name: data.path},
+      function(err, row) {
+        if (row.count > 0) {
+          exports.db.run(
+            "update devices set last_seen = $id where name = $path",
+            {$path:data.path,
+             $id:data.id});
+        } else {
+          exports.db.run(
+            "insert into devices (name, last_seen) values ($path, $id)",
+            {$path:data.path,
+             $id:data.id});
+        }
+    });
+  });
+
+  self.on('saveResponse_DEVICE', function (data) {
+    self.emit('saveDevice', data);
+  });
+
+  self.on('saveResponse_DEVICES', function (data) {
+    data.devices.map(function (device) {
+      device.id = data.id;
+      self.emit('saveDevice', device);
+    });
+  });
+
 };
