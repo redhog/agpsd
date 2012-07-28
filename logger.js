@@ -78,7 +78,6 @@ exports.Logger = function() {
   });
 
   self.on('saveDevice', function (data) {
-      console.log(["SAVE", data]);
     exports.db.get(
       "select count(*) as count from devices where name = $name",
       {$name: data.path},
@@ -105,6 +104,36 @@ exports.Logger = function() {
     data.devices.map(function (device) {
       device.id = data.id;
       self.emit('saveDevice', device);
+    });
+  });
+
+
+  self.on('receiveCommand_WATCH', function (params) {
+    exports.db.each(
+      "select devices.name as name, events.data as data from devices join events on devices.last_seen = events.id",
+      function(err, row) {
+        var data = JSON.parse(row.data);
+        if (data.class == 'DEVICES') {
+          data = data.devices.filter(function (device) { return device.path == row.name; })[0];
+        }
+        self.sendResponse(data);
+    });
+  });
+
+  self.on("serverInitialResponse", function () {
+    var response = {class: 'DEVICES',
+                    devices: []};
+    exports.db.each(
+      "select devices.name as name, events.data as data from devices join events on devices.last_seen = events.id",
+      function(err, row) {
+        var data = JSON.parse(row.data);
+        if (data.class == 'DEVICES') {
+          data = data.devices.filter(function (device) { return device.path == row.name; })[0];
+        }
+        response.devices.push(data);
+      },
+      function (err, rows) {
+        self.sendResponse(response);
     });
   });
 

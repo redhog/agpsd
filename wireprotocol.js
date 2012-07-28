@@ -3,6 +3,7 @@ var util = require('util');
 var underscore = require('underscore');
 var dateformat = require("dateformat");
 var dateformat = require("dateformat");
+var argv = require("./argvparser");
 
 exports.WireProtocol = function(stream, isClient, reverseRoles) {
   var self = this;
@@ -52,6 +53,9 @@ exports.WireProtocol = function(stream, isClient, reverseRoles) {
       } else {
         line = line.match(/(.*[^;\r\n]);?/)[1];
         var response = JSON.parse(line);
+        if (argv.options.verbose !== undefined) {
+          console.log(["R", response]);
+        }
         self.emit('mangleResponse', response);
         self.emit('receiveResponse', response);
       }
@@ -135,8 +139,6 @@ exports.WireProtocol = function(stream, isClient, reverseRoles) {
                                    scaled: false,
                                    timing: false }, params);   
     self.sendResponse(data);
-    self.sendResponse({"class":"DEVICE","path":"/agpsd","activated":dateformat((new Date()), "isoDateTime"),
-                       "driver":"AGPSD","native":1,"cycle":1.00});
   });
 
   self.on('receiveComnmand_REPLAY', function (params) {
@@ -151,18 +153,10 @@ exports.WireProtocol = function(stream, isClient, reverseRoles) {
                        proto_major: 3,
                        proto_minor: 6,
                        capabilities: ["replay", "reverseroles"]});
-
-    self.sendResponse({class: 'DEVICES',
-                       devices: 
-                       [{class: 'DEVICE',
-                         path: '/agpsd',
-                         activated: dateformat((new Date()), "isoDateTime"),
-                         driver: 'AGPSD',
-                         cycle: 1 }]});
   });
 
   if (!self.isClient) {
-    self.emit("serverInitialResponse");
+    setTimeout(function () { self.emit("serverInitialResponse"); }, 0);
   }
 }
 util.inherits(exports.WireProtocol, events.EventEmitter);
