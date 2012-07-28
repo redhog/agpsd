@@ -1,0 +1,15 @@
+.menu {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1.5em;
+}
+
+#map {
+  position: absolute;
+  top: 1.5em;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}

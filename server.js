@@ -7,6 +7,7 @@ var logger = require("./logger");
 var connector = require("./connector");
 var listener = require("./listener");
 var express = require('express');
+var path = require('path');
 var kml = require('./kml');
 
 var dbname = 'agpsd.db';
@@ -48,6 +49,9 @@ logger.init(
       next();
     });
     webserver.get('/kml', kml.getKml);
+    webserver.get(/\/.*/, function(req, res, next) {
+      res.sendfile(path.join(path.dirname(module.filename), "static", req.path), function (err) { if (err) next(); });
+    });
     var httpport = 4812;
     if (argv.options.httplisten && argv.options.httplisten.length > 0) {
       httpport = parseInt(argv.options.httplisten[0]);
