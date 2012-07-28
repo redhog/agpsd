@@ -4,6 +4,7 @@ var underscore = require('underscore');
 var dateformat = require("dateformat");
 var dateformat = require("dateformat");
 var argv = require("./argvparser");
+var os = require("os");
 
 exports.WireProtocol = function(stream, isClient, reverseRoles) {
   var self = this;
@@ -13,7 +14,20 @@ exports.WireProtocol = function(stream, isClient, reverseRoles) {
   self.closed = false;
   self.data = "";
   self.stream = stream;
-  self.name = self.stream.remoteAddress + ":" + self.stream.remotePort
+
+  var remote = self.stream.remoteAddress;
+  if (remote == "127.0.0.1" || remote == "localhost") {
+    remote = os.hostname();
+  }
+  var remotePort = self.stream.remotePort;
+  if (remotePort != 4711) {
+    remote += ":" + remotePort;
+  }
+  self.name = remote;
+
+  if (argv.options.verbose && underscore.include(argv.options.verbose, 'connect')) {
+    console.log("Connection opened from " + self.name);
+  }
 
   stream.on("error", function (err) {
     console.log([self.name, err]);
@@ -49,11 +63,16 @@ exports.WireProtocol = function(stream, isClient, reverseRoles) {
       self.data = self.data.slice(line.length);
       if (line.indexOf("?") == 0) {
         line = line.match(/\?([^=]*)\=(.*[^;\r\n])/);
-        self.emit('receiveCommand', line[1], JSON.parse(line[2]));
+        var cmd =  line[1];
+        var args = JSON.parse(line[2]);
+        if (argv.options.verbose && underscore.include(argv.options.verbose, 'data')) {
+          console.log(["C", cmd, args]);
+        }
+        self.emit('receiveCommand', cmd, args);
       } else {
         line = line.match(/(.*[^;\r\n]);?/)[1];
         var response = JSON.parse(line);
-        if (argv.options.verbose !== undefined) {
+        if (argv.options.verbose && underscore.include(argv.options.verbose, 'data')) {
           console.log(["R", response]);
         }
         self.emit('mangleResponse', response);

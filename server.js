@@ -19,14 +19,13 @@ kml.db = exports.db;
 logger.init(
   exports.db,
   function (err) {
-    var server = net.createServer(function (socket) {
-      socket.name = socket.remoteAddress + ":" + socket.remotePort
-      new listener.Listener(socket);
-    })
     var port = 4711;
     if (argv.options.listen && argv.options.listen.length > 0) {
-      port = argv.options.listen[0];
+      port = parseInt(argv.options.listen[0]);
     }
+    var server = net.createServer(function (socket) {
+      new listener.Listener(socket);
+    })
     server.listen(port);
 
     if (argv.options.upstream) {
@@ -51,15 +50,13 @@ logger.init(
     webserver.get('/kml', kml.getKml);
     var httpport = 4812;
     if (argv.options.httplisten && argv.options.httplisten.length > 0) {
-      httpport = argv.options.httplisten[0];
+      httpport = parseInt(argv.options.httplisten[0]);
     }
     webserver.listen(httpport);
 
 
     console.log("Listening for web requests on " + httpport);
     console.log("Listening for connections on " + port);
-
-
 
   }
 );

@@ -4,27 +4,36 @@ var underscore = require('underscore');
 var protocol = require('./protocol');
 var net = require('net');
 var dateformat = require("dateformat");
+var argv = require("./argvparser");
 
 exports.Connector = function(host, port, reverseRoles) {
   var reconnect = function () {
     setTimeout(function () {
-      console.log("Reconnect");
+      if (argv.options.verbose && underscore.include(argv.options.verbose, 'disconnect')) {
+        console.log("Reconnect");
+      }
       new exports.Connector(host, port, reverseRoles);
     }, 2000);
   }
   var self = this;
   var stream = net.createConnection(port, host);
   stream.on("error", function (err) {
-    console.log(err);
+    if (argv.options.verbose && underscore.include(argv.options.verbose, 'disconnect')) {
+      console.log(err);
+    }
     stream.destroy();
     reconnect();
   });
   stream.on("timeout", function () {
-    console.log("Timeout");
+    if (argv.options.verbose && underscore.include(argv.options.verbose, 'disconnect')) {
+      console.log("Timeout");
+    }
     self.stream.end();
   });
   stream.on("end", function () {
-    console.log("End");
+    if (argv.options.verbose && underscore.include(argv.options.verbose, 'disconnect')) {
+      console.log("End");
+    }
     reconnect();
   });
   stream.on("connect", function () {
