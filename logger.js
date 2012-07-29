@@ -6,10 +6,27 @@ var dateformat = require("dateformat");
 exports.init = function(db, cb) {
   exports.db = db;
   exports.db.run(
-    "create table events (id integer primary key autoincrement, timestamp timestamp, class varchar(32), data text, lat real, lon real)",
+    "create table events (id integer primary key autoincrement, timestamp timestamp, class varchar(32), data text, device varchar(256), lat real, lon real)",
     function () {
       exports.db.run(
         "create table devices (name varchar(256), last_seen integer references events(id))", cb);
+    }
+  );
+}
+
+exports.getDevices = function (cb) {
+  var devices = [];
+  exports.db.each(
+    "select devices.name as name, events.data as data from devices join events on devices.last_seen = events.id",
+    function(err, row) {
+      var data = JSON.parse(row.data);
+      if (data.class == 'DEVICES') {
+        data = data.devices.filter(function (device) { return device.path == row.name; })[0];
+      }
+      devices.push(data);
+    },
+    function(err, rows) {
+      cb(err, devices);
     }
   );
 }
@@ -57,10 +74,11 @@ exports.Logger = function() {
 
   self.on('receiveResponse', function (response) {
     exports.db.run(
-      "insert into events (timestamp, class, data, lat, lon) values ($timestamp, $class, $data, $lat, $lon)",
+      "insert into events (timestamp, class, data, device, lat, lon) values ($timestamp, $class, $data, $device, $lat, $lon)",
       {$timestamp:response.time,
        $class:response.class,
        $data:JSON.stringify(response),
+       $device:response.device,
        $lat:response.lat,
        $lon:response.lon},
       function (err) {
@@ -109,31 +127,17 @@ exports.Logger = function() {
 
 
   self.on('receiveCommand_WATCH', function (params) {
-    exports.db.each(
-      "select devices.name as name, events.data as data from devices join events on devices.last_seen = events.id",
-      function(err, row) {
-        var data = JSON.parse(row.data);
-        if (data.class == 'DEVICES') {
-          data = data.devices.filter(function (device) { return device.path == row.name; })[0];
-        }
-        self.sendResponse(data);
+    exports.getDevices(function (err, devices) {
+      devices.map(function (device) {
+        self.sendResponse(device);
+      });
     });
   });
 
   self.on("serverInitialResponse", function () {
-    var response = {class: 'DEVICES',
-                    devices: []};
-    exports.db.each(
-      "select devices.name as name, events.data as data from devices join events on devices.last_seen = events.id",
-      function(err, row) {
-        var data = JSON.parse(row.data);
-        if (data.class == 'DEVICES') {
-          data = data.devices.filter(function (device) { return device.path == row.name; })[0];
-        }
-        response.devices.push(data);
-      },
-      function (err, rows) {
-        self.sendResponse(response);
+    exports.getDevices(function (err, devices) {
+      self.sendResponse({class: 'DEVICES',
+                         devices: devices});
     });
   });
 

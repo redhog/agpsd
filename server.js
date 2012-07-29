@@ -9,6 +9,7 @@ var listener = require("./listener");
 var express = require('express');
 var path = require('path');
 var kml = require('./kml');
+var listings = require('./listings');
 
 var dbname = 'agpsd.db';
 if (argv.options.db && argv.options.db.length > 0) {
@@ -49,6 +50,7 @@ logger.init(
       next();
     });
     webserver.get('/kml', kml.getKml);
+    webserver.get('/devices', listings.getDevices);
     webserver.get(/\/.*/, function(req, res, next) {
       res.sendfile(path.join(path.dirname(module.filename), "static", req.path), function (err) { if (err) next(); });
     });
