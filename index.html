@@ -1,0 +1,88 @@
+<!doctype html>
+<!-- The Time Machine GitHub pages theme was designed and developed by Jon Rohan, on Feb 7, 2012. -->
+<!-- Follow him for fun. http://twitter.com/jonrohan. Tail his code on http://github.com/jonrohan -->
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+  <link rel="stylesheet" href="stylesheets/stylesheet.css" media="screen"/>
+  <link rel="stylesheet" href="stylesheets/pygment_trac.css"/>
+  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+  <script type="text/javascript" src="javascripts/script.js"></script>
+
+  <title>Agpsd</title>
+  <meta name="description" content="A gpsd logging and replication daemon">
+
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+</head>
+
+<body>
+
+  <div class="wrapper">
+    <header>
+      <h1 class="title">Agpsd</h1>
+    </header>
+    <div id="container">
+      <p class="tagline">A gpsd logging and replication daemon</p>
+      <div id="main" role="main">
+        <div class="download-bar">
+        <div class="inner">
+          <a href="https://github.com/redhog/agpsd/tarball/master" class="download-button tar"><span>Download</span></a>
+          <a href="https://github.com/redhog/agpsd/zipball/master" class="download-button zip"><span>Download</span></a>
+          <a href="https://github.com/redhog/agpsd" class="code">View Agpsd on GitHub</a>
+        </div>
+        <span class="blc"></span><span class="trc"></span>
+        </div>
+        <article class="markdown-body">
+          <h1>Typical usage</h1>
+
+<p>The typical usage of AGPSD is to send GPSD data over a intermittent
+network connection from a vehicle to a server, and have the server serve
+the last known data as well as history to clients. Currently the data
+can be retrieved using the GPSD protocol and KML.</p>
+
+<h1>Features</h1>
+
+<p>AGPSD works like a GPSD router, with caching. It acts as both a GPSD
+client and server, and stores all NMEA events in an SQLite database. In
+addition to simply relaying data to clients, it supports replaying old
+data, and replication of the log between AGPSD servers.</p>
+
+<p>It can initiate connections for replication both from the receiving and
+the sending end, enabling operation over networks with dynamic ip:s</p>
+
+<p>AGPSD also acts as a web server and serves the recorded data as KML, as
+well as an OpenLayers based user interface to browse said kml data.</p>
+
+<h1>License</h1>
+
+<p>GPL v 3</p>
+
+<h1>Author</h1>
+
+<p>RedHog (Egil Möller)</p>
+        </article>
+      </div>
+    </div>
+    <footer>
+      <div class="owner">
+      <p><a href="https://github.com/redhog" class="avatar"><img src="https://secure.gravatar.com/avatar/755b5e7dbfd41f76a6b9f34058f61253?s=30&amp;d=https://a248.e.akamai.net/assets.github.com%2Fimages%2Fgravatars%2Fgravatar-140.png" width="48" height="48"/></a> <a href="https://github.com/redhog">redhog</a> maintains <a href="https://github.com/redhog/agpsd">Agpsd</a></p>
+
+
+      </div>
+      <div class="creds">
+        <small>This page generated using <a href="https://pages.github.com/">GitHub Pages</a><br/>theme by <a href="http://twitter.com/jonrohan/">Jon Rohan</a></small>
+      </div>
+    </footer>
+  </div>
+  <div class="current-section">
+    <a href="#top">Scroll to top</a>
+    <a href="https://github.com/redhog/agpsd/tarball/master" class="tar">tar</a><a href="https://github.com/redhog/agpsd/zipball/master" class="zip">zip</a><a href="" class="code">source code</a>
+    <p class="name"></p>
+  </div>
+
+  
+</body>
+</html>
