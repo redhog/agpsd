@@ -10,7 +10,7 @@ exports.init = function(db, cb) {
     ["create table events (id integer primary key autoincrement, timestamp timestamp, class varchar(32), data text, device varchar(256), lat real, lon real)",
      "create table vessels (id integer primary key autoincrement, mmsi varchar(256), last_seen integer references events(id))",
      "create table events_ais (id integer references events(id), vessel_id integer references vessels(id))",
-     "create table devices (name varchar(256), last_seen integer references events(id))"],
+     "create table devices (id integer primary key autoincrement, name varchar(256), last_seen integer references events(id))"],
     function (item, cb) { exports.db.run(item, cb); },
    cb);
 }
