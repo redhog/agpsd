@@ -2,16 +2,17 @@ var events = require('events');
 var util = require('util');
 var underscore = require('underscore');
 var dateformat = require("dateformat");
+var async = require("async");
 
 exports.init = function(db, cb) {
   exports.db = db;
-  exports.db.run(
-    "create table events (id integer primary key autoincrement, timestamp timestamp, class varchar(32), data text, device varchar(256), lat real, lon real)",
-    function () {
-      exports.db.run(
-        "create table devices (name varchar(256), last_seen integer references events(id))", cb);
-    }
-  );
+  async.map(
+    ["create table events (id integer primary key autoincrement, timestamp timestamp, class varchar(32), data text, device varchar(256), lat real, lon real)",
+     "create table vessels (id integer primary key autoincrement, mmsi varchar(256), last_seen integer references events(id))",
+     "create table events_ais (id integer references events(id), vessel_id integer references vessels(id))",
+     "create table devices (name varchar(256), last_seen integer references events(id))"],
+    function (item, cb) { exports.db.run(item, cb); },
+   cb);
 }
 
 exports.getDevices = function (cb) {
@@ -139,6 +140,51 @@ exports.Logger = function() {
       self.sendResponse({class: 'DEVICES',
                          devices: devices});
     });
+  });
+
+  self.on('saveAIS', function (data) {
+    exports.db.run(
+      "insert into events_ais (id, vessel_id) values ($event, $vessel)",
+      {$event:data.event.id,
+       $vessel:data.vessel.id});
+  });
+
+  self.on('saveVessel', function (data) {
+    var next = function (err) {
+      if (err) { console.warn(err); return; }
+      exports.db.get(
+        "select id from vessels where mmsi = $mmsi",
+        {$mmsi:data.mmsi},
+        function(err, row) {
+          if (err) { console.warn(err); return; }
+          self.emit("saveAIS", {event:data, vessel: {id:row.id}});
+        });
+    }
+
+    exports.db.get(
+      "select count(*) as count from vessels where mmsi = $mmsi",
+      {$mmsi: data.mmsi},
+      function(err, row) {
+        if (err) { console.warn(err); return; }
+        if (row.count > 0) {
+          exports.db.run(
+            "update vessels set last_seen = $id where mmsi = $mmsi",
+            {$mmsi:data.mmsi,
+             $id:data.id},
+            next);
+        } else {
+          exports.db.run(
+            "insert into vessels (mmsi, last_seen) values ($mmsi, $id)",
+            {$mmsi:data.mmsi,
+             $id:data.id},
+            next);
+        }
+    });
+  });
+  
+
+  self.on('saveResponse_AIS', function (data) {
+    self.emit("saveVessel", data);
   });
 
 };
