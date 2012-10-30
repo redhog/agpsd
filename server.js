@@ -10,6 +10,8 @@ var express = require('express');
 var path = require('path');
 var kml = require('./kml');
 var listings = require('./listings');
+var streaminput = require('./streaminput');
+var fs = require('fs');
 
 var dbname = 'agpsd.db';
 if (argv.options.db && argv.options.db.length > 0) {
@@ -32,15 +34,28 @@ logger.init(
 
     if (argv.options.upstream) {
       argv.options.upstream.forEach(function (val, index) {
-        val = val.split(":");
-        new connector.Connector(val[0], val[1], false);
+        if (val.indexOf(":") != -1) {
+          val = val.split(":");
+          new connector.Connector(val[0], val[1], false);
+        } else if (val == "-") {
+          new streaminput.StreamInput(process.stdin, false);
+          process.stdin.resume();
+        } else {
+          new streaminput.StreamInput(fs.createReadStream(val), false);
+        }
       });
     }
 
     if (argv.options.downstream) {
       argv.options.downstream.forEach(function (val, index) {
-        val = val.split(":");
-        new connector.Connector(val[0], val[1], true);
+        if (val.indexOf(":") != -1) {
+          val = val.split(":");
+          new connector.Connector(val[0], val[1], true);
+        } else if (val == "-") {
+          // FIXME
+        } else {
+          // FIXME
+        }
       });
     }
 
