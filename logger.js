@@ -94,25 +94,36 @@ exports.Logger = function() {
     if (response.class) {
       self.emit('saveResponse_' + response.class, response);
     }
+    if (response.device) {
+      self.emit('saveDevice', {path:response.device, id:response.id, dont_update_last_seen: true});
+    }
   });
 
-  self.on('saveDevice', function (data) {
+  self.saveDeviceQueue = async.queue(function (data, cb) {
     exports.db.get(
       "select count(*) as count from devices where name = $name",
       {$name: data.path},
       function(err, row) {
+        if (err) { console.warn(err); return cb(); }
         if (row.count > 0) {
+          if (data.dont_update_last_seen) { return cb(); }
           exports.db.run(
             "update devices set last_seen = $id where name = $path",
             {$path:data.path,
-             $id:data.id});
+             $id:data.id},
+             function (err) { if (err) { console.warn(err); } cb(); });
         } else {
           exports.db.run(
             "insert into devices (name, last_seen) values ($path, $id)",
             {$path:data.path,
-             $id:data.id});
+             $id:data.id},
+            function (err) { if (err) { console.warn(err); } cb(); });
         }
     });
+  }, 1);
+
+  self.on('saveDevice', function (data) {
+    self.saveDeviceQueue.push(data);
   });
 
   self.on('saveResponse_DEVICE', function (data) {
@@ -149,15 +160,16 @@ exports.Logger = function() {
        $vessel:data.vessel.id});
   });
 
-  self.on('saveVessel', function (data) {
+  self.saveVesselQueue = async.queue(function (data, cb) {
     var next = function (err) {
-      if (err) { console.warn(err); return; }
+      if (err) { console.warn(err); return cb(); }
       exports.db.get(
         "select id from vessels where mmsi = $mmsi",
         {$mmsi:data.mmsi},
         function(err, row) {
-          if (err) { console.warn(err); return; }
+          if (err) { console.warn(err); return cb(); }
           self.emit("saveAIS", {event:data, vessel: {id:row.id}});
+          cb();
         });
     }
 
@@ -165,7 +177,7 @@ exports.Logger = function() {
       "select count(*) as count from vessels where mmsi = $mmsi",
       {$mmsi: data.mmsi},
       function(err, row) {
-        if (err) { console.warn(err); return; }
+        if (err) { console.warn(err); return cb(); }
         if (row.count > 0) {
           exports.db.run(
             "update vessels set last_seen = $id where mmsi = $mmsi",
@@ -180,6 +192,10 @@ exports.Logger = function() {
             next);
         }
     });
+  }, 1);
+
+  self.on('saveVessel', function (data) {
+    self.saveVesselQueue.push(data);
   });
   
 
