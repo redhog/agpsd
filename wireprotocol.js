@@ -103,6 +103,12 @@ exports.WireProtocol = function(stream, isClient, reverseRoles) {
 
       });
     }
+    // Yes, for some reason gpsd doesn't do this for us...
+    if (response.class == "AIS" && !response.ais_coord_float) {
+      response.lat = response.lat / 600000.0;
+      response.lon = response.lon / 600000.0;
+      response.ais_coord_float = true;
+    }
   });
 
   self.on('receiveResponse', function (data) {
