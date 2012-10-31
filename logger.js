@@ -32,6 +32,19 @@ exports.getDevices = function (cb) {
   );
 }
 
+exports.getVessels = function (cb) {
+  var vessels = [];
+  exports.db.each(
+    "select * from vessels",
+    function(err, row) {
+      vessels.push(row);
+    },
+    function(err, rows) {
+      cb(err, vessels);
+    }
+  );
+}
+
 exports.Logger = function() {
   var self = this;
 
