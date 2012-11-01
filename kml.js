@@ -1,5 +1,6 @@
 var express = require('express');
 var async = require('async');
+var underscore = require('underscore');
 var logger = require('./logger');
 
 var listify = function (x) {
@@ -36,6 +37,25 @@ exports.getKml = function(req, res) {
     );
   }
 
+  var sendCoordinates = function (coordinates, done) {
+    wrap(
+      '<coordinates>\n',
+      '</coordinates>\n',
+      function (cb) {
+        coordinates(function (err, rows) {
+          if (err) { return console.log(err); }
+          rows.map(
+            function (row) {
+              res.write(row.lon + "," + row.lat + "," + (row.alt || 0) + "\n");
+            });
+          cb();
+        });
+      },
+      done
+    );
+  }
+
+
   var sendRoute = function (name, coordinates, done) {
     wrap(
       '    <Placemark>\n' +
@@ -49,7 +69,7 @@ exports.getKml = function(req, res) {
       '        </coordinates>\n' +
       '      </LineString>\n' +
       '    </Placemark>\n',
-      coordinates,
+      function (cb) { sendCoordinates(coordinates, cb); },
       done
     );
   }
@@ -70,36 +90,14 @@ exports.getKml = function(req, res) {
     res.write('</Placemark>\n');
   }
 
-  var checkDatabaseRoute = function (query, routecb, cb) {
-    exports.db.get(
-      "select count(*) as count from (" + query.sql + ") where lon is not null and lat is not null",
-      query.params,
-      function(err, row) {
-        if (err) { console.log(err); return cb(); }
-        if (row.count == 0) { return cb(); }
-        routecb(query, cb);
-      }
-    );
-
-  }
-
   var sendDatabaseRoute = function (query, cb) {
-    checkDatabaseRoute(
+    logger.onlyWithRoute(
       query,
-      function (query, cb) {
+      function (cb) {
         sendRoute(
           query.name,
           function (cb) {
-            exports.db.each(
-              "select data from (" + query.sql + ") where lon is not null and lat is not null order by timestamp asc",
-              query.params,
-              function(err, row) {
-                if (err) return console.log(err);
-                var data = JSON.parse(row.data);
-                res.write(data.lon + "," + data.lat + "," + (data.alt || 0) + "\n");
-              },
-              cb
-            );
+            logger.getRoute(query, cb);
           },
           cb
         );
@@ -109,9 +107,9 @@ exports.getKml = function(req, res) {
   }
 
   var sendDatabaseRoutePoints = function (query, cb) {
-    checkDatabaseRoute(
+    logger.onlyWithRoute(
       query,
-      function (query, cb) {
+      function (cb) {
         exports.db.each(
           "select data from (" + query.sql + ") where lon is not null and lat is not null order by timestamp asc",
           query.params,
@@ -129,10 +127,12 @@ exports.getKml = function(req, res) {
   }
 
   var sendDevice = function (device, cb) {
-    sendDatabaseRoute({
-      name: device,
-      sql: "select * from events where class = 'TPV' and device = $device and lon is not null and lat is not null order by timestamp asc",
-      params: {$device: device}}, cb);
+    sendDatabaseRoute(
+      underscore.extend({}, req.query, {
+        name: device,
+        sql: "select * from events where class = 'TPV' and device = $device and lon is not null and lat is not null order by timestamp asc",
+        params: {$device: device}}),
+      cb);
   }
 
   var sendDevices = function (devices, cb) {
@@ -148,10 +148,11 @@ exports.getKml = function(req, res) {
   }
 
   var sendVessel = function (vessel, cb) {
-    sendDatabaseRoute({
-      name: vessel.mmsi,
-      sql: "select * from events join events_ais on events.id = events_ais.id where events.class = 'AIS' and events_ais.vessel_id = $vessel",
-      params: {$vessel: vessel.id}},
+    sendDatabaseRoute(
+      underscore.extend({}, req.query, {
+        name: vessel.mmsi,
+        sql: "select * from events join events_ais on events.id = events_ais.id where events.class = 'AIS' and events_ais.vessel_id = $vessel",
+        params: {$vessel: vessel.id}}),
       function () {
         sendDatabaseRoutePoints({
           name: vessel.mmsi,

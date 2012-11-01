@@ -6,13 +6,45 @@ var async = require("async");
 
 exports.init = function(db, cb) {
   exports.db = db;
-  async.map(
-    ["create table events (id integer primary key autoincrement, timestamp timestamp, class varchar(32), data text, device varchar(256), lat real, lon real)",
-     "create table vessels (id integer primary key autoincrement, mmsi varchar(256), last_seen integer references events(id))",
-     "create table events_ais (id integer references events(id), vessel_id integer references vessels(id))",
-     "create table devices (id integer primary key autoincrement, name varchar(256), last_seen integer references events(id))"],
-    function (item, cb) { exports.db.run(item, cb); },
-   cb);
+
+  // Write to DB every two seconds...
+  exports.inLogic = 0;
+  exports.db.run(
+    "begin transaction",
+    function (err) {
+      if (err) { return console.log(err); }
+      setInterval(function () {
+        if (exports.inLogic) return;
+        exports.db.run(
+          "end transaction",
+          function (err) {
+            if (err) { return console.log(err); }
+            // console.log("COMMIT");
+            exports.db.run(
+              "begin transaction",
+               function (err) {
+                 if (err) { return console.log(err); }
+               }
+            );
+          });
+      }, 1000);
+
+      async.map(
+        ["create table events (id integer primary key autoincrement, timestamp timestamp, class varchar(32), data text, device varchar(256), lat real, lon real)",
+         "create table vessels (id integer primary key autoincrement, mmsi varchar(256), last_seen integer references events(id))",
+         "create table events_ais (id integer references events(id), vessel_id integer references vessels(id))",
+         "create table devices (id integer primary key autoincrement, name varchar(256), last_seen integer references events(id))"],
+        function (item, cb) { exports.db.run(item, cb); },
+       cb);
+    });
+}
+
+exports.callInOneTransaction = function (fn, cb) {
+  exports.inLogic++;
+  fn(function () {
+    exports.inLogic--;
+    cb();
+  });
 }
 
 exports.getDevices = function (cb) {
@@ -44,6 +76,93 @@ exports.getVessels = function (cb) {
     }
   );
 }
+
+exports.getRouteSql = function (query) {
+  var sql = query.sql;
+  var params = underscore.clone(query.params); 
+
+  sql = "select * from (" + sql + ") where lon is not null and lat is not null";
+
+  if (query.timemin != undefined) {
+    sql = sql + " and timestamp >= $timemin";
+    params.$timemin = query.timemin;
+  }
+  if (query.timemax != undefined) {
+    sql = sql + " and timestamp <= $timemax";
+    params.$timemax = query.timemax;
+  }
+
+  var regionsql = [];
+  if (query.latmin != undefined) { regionsql.push("lat >= $latmin"); }
+  if (query.lonmin != undefined) { regionsql.push("lon >= $lonmin"); }
+  if (query.latmax != undefined) { regionsql.push("lat <= $latmax"); }
+  if (query.lonmax != undefined) { regionsql.push("lon <= $lonmax"); }
+  if (regionsql.length) {
+    regionsql = regionsql.join(' and ');
+    sql = sql + " and " + regionsql;
+
+    params.$latmin = query.latmin;
+    params.$lonmin = query.lonmin;
+    params.$latmax = query.latmax;
+    params.$lonmax = query.lonmax;
+  }
+
+  if (query.maxentries != undefined) {
+    countSql = exports.getCountSql({sql: sql, params:params});
+
+    sql = sql + " and random() % (" + countSql.sql + ") / $maxentries = 0";
+    params = countSql.params;
+    params.$maxentries = query.maxentries;
+  }
+  
+  sql = sql + " order by timestamp asc";
+
+  return {
+    sql: sql,
+    params: params
+  }
+}
+
+exports.getCountSql = function (query) {
+  var sql = query.sql;
+  var params = underscore.clone(query.params); 
+
+  return {
+    sql: "select count(*) as count from (" + sql + ")",
+    params: params
+  };
+}
+
+exports.onlyWithRoute = function (query, routecb, cb) {
+  var sql = exports.getCountSql(exports.getRouteSql(query));
+
+  exports.db.get(
+    sql.sql,
+    sql.params,
+    function(err, row) {
+      if (err) { console.log(err); return cb(); }
+      if (row.count == 0) { return cb(); }
+      routecb(cb);
+    }
+  );
+
+}
+
+exports.getRoute = function (query, cb) {
+  var sql = exports.getRouteSql(query);
+
+  console.log("QUERY");
+  console.log(sql.sql);
+  console.log(sql.params);
+  console.log("\n\n");
+  exports.db.all(
+    sql.sql,
+    sql.params,
+    function(err, rows) {
+      if (err) return cb(err);
+      cb(null, rows.map(function (row) { return JSON.parse(row.data); }));
+    });
+};
 
 exports.Logger = function() {
   var self = this;
@@ -113,26 +232,30 @@ exports.Logger = function() {
   });
 
   self.saveDeviceQueue = async.queue(function (data, cb) {
-    exports.db.get(
-      "select count(*) as count from devices where name = $name",
-      {$name: data.path},
-      function(err, row) {
-        if (err) { console.warn(err); return cb(); }
-        if (row.count > 0) {
-          if (data.dont_update_last_seen) { return cb(); }
-          exports.db.run(
-            "update devices set last_seen = $id where name = $path",
-            {$path:data.path,
-             $id:data.id},
-             function (err) { if (err) { console.warn(err); } cb(); });
-        } else {
-          exports.db.run(
-            "insert into devices (name, last_seen) values ($path, $id)",
-            {$path:data.path,
-             $id:data.id},
-            function (err) { if (err) { console.warn(err); } cb(); });
-        }
-    });
+    exports.callInOneTransaction(
+      function (cb) {
+        exports.db.get(
+          "select count(*) as count from devices where name = $name",
+          {$name: data.path},
+          function(err, row) {
+            if (err) { console.warn(err); return cb(); }
+            if (row.count > 0) {
+              if (data.dont_update_last_seen) { return cb(); }
+              exports.db.run(
+                "update devices set last_seen = $id where name = $path",
+                {$path:data.path,
+                 $id:data.id},
+                 function (err) { if (err) { console.warn(err); } cb(); });
+            } else {
+              exports.db.run(
+                "insert into devices (name, last_seen) values ($path, $id)",
+                {$path:data.path,
+                 $id:data.id},
+                function (err) { if (err) { console.warn(err); } cb(); });
+            }
+        });
+      },
+      cb);
   }, 1);
 
   self.on('saveDevice', function (data) {
@@ -174,37 +297,41 @@ exports.Logger = function() {
   });
 
   self.saveVesselQueue = async.queue(function (data, cb) {
-    var next = function (err) {
-      if (err) { console.warn(err); return cb(); }
-      exports.db.get(
-        "select id from vessels where mmsi = $mmsi",
-        {$mmsi:data.mmsi},
-        function(err, row) {
+    exports.callInOneTransaction(
+      function (cb) {
+        var next = function (err) {
           if (err) { console.warn(err); return cb(); }
-          self.emit("saveAIS", {event:data, vessel: {id:row.id}});
-          cb();
-        });
-    }
-
-    exports.db.get(
-      "select count(*) as count from vessels where mmsi = $mmsi",
-      {$mmsi: data.mmsi},
-      function(err, row) {
-        if (err) { console.warn(err); return cb(); }
-        if (row.count > 0) {
-          exports.db.run(
-            "update vessels set last_seen = $id where mmsi = $mmsi",
-            {$mmsi:data.mmsi,
-             $id:data.id},
-            next);
-        } else {
-          exports.db.run(
-            "insert into vessels (mmsi, last_seen) values ($mmsi, $id)",
-            {$mmsi:data.mmsi,
-             $id:data.id},
-            next);
+          exports.db.get(
+            "select id from vessels where mmsi = $mmsi",
+            {$mmsi:data.mmsi},
+            function(err, row) {
+              if (err) { console.warn(err); return cb(); }
+              self.emit("saveAIS", {event:data, vessel: {id:row.id}});
+              cb();
+            });
         }
-    });
+
+        exports.db.get(
+          "select count(*) as count from vessels where mmsi = $mmsi",
+          {$mmsi: data.mmsi},
+          function(err, row) {
+            if (err) { console.warn(err); return cb(); }
+            if (row.count > 0) {
+              exports.db.run(
+                "update vessels set last_seen = $id where mmsi = $mmsi",
+                {$mmsi:data.mmsi,
+                 $id:data.id},
+                next);
+            } else {
+              exports.db.run(
+                "insert into vessels (mmsi, last_seen) values ($mmsi, $id)",
+                {$mmsi:data.mmsi,
+                 $id:data.id},
+                next);
+            }
+        });
+      },
+      cb);
   }, 1);
 
   self.on('saveVessel', function (data) {
