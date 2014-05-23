@@ -57,28 +57,34 @@ exports.WireProtocol = function(stream, isClient, reverseRoles) {
 
   self.stream.on('data', function(data) {
     self.data += data;
-    var _terminator = /^([^\r\n]*[\r\n][\r\n]?)/;
-    while (results = _terminator.exec(self.data)) {
-      var line = results[1];
-      self.data = self.data.slice(line.length);
-      if (line.indexOf("?") == 0) {
-        line = line.match(/\?([^=]*)\=(.*[^;\r\n])/);
-        var cmd =  line[1];
-        var args = JSON.parse(line[2]);
-        if (argv.options.verbose && underscore.include(argv.options.verbose, 'data')) {
-          console.log(["C", cmd, args]);
+    try {
+      var _terminator = /^([^\r\n]*[\r\n][\r\n]?)/;
+      while (results = _terminator.exec(self.data)) {
+        var line = results[1];
+        self.data = self.data.slice(line.length);
+        if (line.indexOf("?") == 0) {
+          line = line.match(/\?([^=]*)\=(.*[^;\r\n])/);
+          var cmd =  line[1];
+          var args = JSON.parse(line[2]);
+          if (argv.options.verbose && underscore.include(argv.options.verbose, 'data')) {
+            console.log(["C", cmd, args]);
+          }
+          self.emit('receiveCommand', cmd, args);
+        } else {
+          line = line.match(/(.*[^;\r\n]);?/)[1];
+          var response = JSON.parse(line);
+          if (argv.options.verbose && underscore.include(argv.options.verbose, 'data')) {
+            console.log(["R", response]);
+          }
+          self.emit('mangleResponse', response);
+          self.emit('receiveResponse', response);
         }
-        self.emit('receiveCommand', cmd, args);
-      } else {
-        line = line.match(/(.*[^;\r\n]);?/)[1];
-        var response = JSON.parse(line);
-        if (argv.options.verbose && underscore.include(argv.options.verbose, 'data')) {
-          console.log(["R", response]);
-        }
-        self.emit('mangleResponse', response);
-        self.emit('receiveResponse', response);
-      }
-    };
+      };
+    } catch (e) {
+      console.log("Protocol error: " + e.toString());
+      self.closed = true;
+      self.stream.end()
+    }
   });
 
   self.on('directionChange', function (isClient) {
