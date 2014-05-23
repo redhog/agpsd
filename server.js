@@ -59,7 +59,7 @@ logger.init(
       });
     }
 
-    webserver = express.createServer();
+    webserver = express();
     webserver.use(function (req, res, next) {
       res.header("Server", "AGPSD");
       next();
