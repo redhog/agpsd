@@ -39,8 +39,8 @@ exports.getKml = function(req, res) {
 
   var sendCoordinates = function (coordinates, done) {
     wrap(
-      '<coordinates>\n',
-      '</coordinates>\n',
+      '', //<coordinates>\n',
+      '', //</coordinates>\n',
       function (cb) {
         coordinates(function (err, rows) {
           if (err) { return console.log(err); }
