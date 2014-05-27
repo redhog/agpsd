@@ -169,7 +169,8 @@ exports.Logger = function() {
 
   self.on('receiveCommand_WATCH', function (params) {
     exports.db.get(
-      "select data from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') order by timestamp desc limit 1",
+      "select data from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') and where device = $name order by timestamp desc limit 1",
+      {$name: data.path},
       function(err, row) {
         self.sendResponse(JSON.parse(row.data));
     });
@@ -178,14 +179,16 @@ exports.Logger = function() {
   self.on('receiveCommand_REPLAY', function (params) {
     if (params.from) {
       exports.db.each(
-        "select data from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') and timestamp > ? order by timestamp asc",
+        "select data from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') and where device = $name and timestamp > ? order by timestamp asc",
+        {$name: data.path}, 
         params.from,
-        function(err, row) {
+         function(err, row) {
           self.sendResponse(JSON.parse(row.data));
       });
     } else {
       exports.db.each(
-        "select data from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') order by timestamp asc",
+        "select data from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') and where device = $name order by timestamp asc",
+        {$name: data.path},
         function(err, row) {
           self.sendResponse(JSON.parse(row.data));
       });
@@ -194,7 +197,8 @@ exports.Logger = function() {
 
   self.on('receiveResponse_VERSION_REPLAY', function (data) {
     exports.db.get(
-      "select timestamp from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') order by timestamp desc limit 1",
+      "select timestamp from events where class not in ('VERSION', 'DEVICES', 'DEVICE', 'WATCH', 'REPLAY') and where device = $name order by timestamp desc limit 1",
+      {$name: data.path},
       function(err, row) {
         if (err || !row) {
           self.sendCommand("REPLAY", {});
